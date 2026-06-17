@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#000000" />
+<title>Vocal Strike</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<style>
+  /* ============================================================
+     VOCAL STRIKE — FOS MASTER LLC
+     A speech-practice buddy + voice game for all ages.
+     PRACTICE BUDDY: it models the sound, says it together, then
+       it's your turn — the mic credits any vocal attempt (or a
+       tap), and it echoes the word back with a reward.
+     SOLO GAME: make a comfortable sound to fill a meter and clear
+       targets. Themes only reskin the reward.
+     Bar is set to the player's COMFORTABLE voice, never their max.
+     On-device only. No recording. No grading. Not a medical device.
+     ============================================================ */
+  :root{ --bg:#000; --aqua:#00FFFF; --aqua-dim:#0a8a8a; --ink:#fff; --muted:#8aa9a9;
+    --accent:#00FFFF; --pad:clamp(12px,3vw,24px); }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);height:100%;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none;-webkit-user-select:none;user-select:none;}
+  body{min-height:100dvh;display:flex;flex-direction:column;}
+  :focus-visible{outline:4px solid var(--accent);outline-offset:3px;}
+  .screen{flex:1;display:none;flex-direction:column;padding:var(--pad);gap:var(--pad);max-width:1000px;width:100%;margin:0 auto;}
+  .screen.active{display:flex;}
+  button{font-family:inherit;font-weight:800;color:var(--accent);background:transparent;border:3px solid var(--accent);
+    border-radius:14px;cursor:pointer;transition:transform .05s ease,background .12s ease,color .12s ease;}
+  button:active{transform:scale(.98);}
+  .btn-primary{width:100%;min-height:84px;font-size:clamp(20px,5vw,30px);letter-spacing:.04em;text-transform:uppercase;
+    box-shadow:0 0 18px color-mix(in srgb,var(--accent) 40%,transparent);}
+  .btn-primary:hover{background:var(--accent);color:#000;}
+  .btn-secondary{width:100%;min-height:64px;font-size:clamp(16px,4vw,20px);text-transform:uppercase;letter-spacing:.03em;}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;}
+  .btn-small{flex:1 1 auto;min-width:92px;min-height:56px;font-size:15px;padding:8px 10px;text-transform:uppercase;letter-spacing:.03em;}
+  .btn-small.on{background:var(--accent);color:#000;}
+  .link-row{display:flex;gap:10px;flex-wrap:wrap;}
+  .link-row button{min-height:52px;font-size:14px;}
+  .brand{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;margin-top:clamp(6px,3vh,24px);}
+  .brand h1{margin:0;font-size:clamp(40px,12vw,84px);line-height:.9;letter-spacing:.02em;color:var(--accent);
+    text-shadow:0 0 22px color-mix(in srgb,var(--accent) 45%,transparent);}
+  .brand .tag{color:var(--muted);font-size:clamp(13px,3.4vw,18px);letter-spacing:.12em;text-transform:uppercase;}
+  .theme-now{display:flex;align-items:center;justify-content:center;gap:10px;font-size:clamp(14px,3.8vw,19px);
+    border:2px solid var(--aqua-dim);border-radius:14px;padding:12px;}
+  .theme-now .em{font-size:1.5em;}
+  .how{border:2px solid var(--aqua-dim);border-radius:14px;padding:var(--pad);font-size:clamp(14px,3.4vw,17px);line-height:1.5;}
+  .how b{color:var(--accent);}
+  .spacer{flex:1;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;}
+  .theme-card{display:flex;flex-direction:column;align-items:center;gap:8px;min-height:120px;justify-content:center;padding:16px;border-radius:16px;}
+  .theme-card .em{font-size:44px;line-height:1;} .theme-card .nm{font-size:16px;text-transform:uppercase;letter-spacing:.04em;}
+  .section-title{font-size:clamp(20px,5.5vw,30px);font-weight:900;color:var(--accent);margin:0;}
+  .hint{color:var(--muted);font-size:14px;line-height:1.5;}
+  textarea{width:100%;min-height:160px;background:#061414;color:var(--ink);border:3px solid var(--accent);border-radius:14px;
+    padding:14px;font-size:18px;font-family:inherit;line-height:1.6;resize:vertical;}
+  .toggle-line{display:flex;align-items:center;justify-content:space-between;gap:12px;border:2px solid var(--aqua-dim);border-radius:14px;padding:14px;font-size:16px;}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;}
+  .stat{border:2px solid var(--aqua-dim);border-radius:14px;padding:16px;text-align:center;}
+  .stat .num{font-size:clamp(28px,8vw,44px);font-weight:900;color:var(--accent);line-height:1;}
+  .stat .lab{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-top:6px;}
+  .sessions{border:2px solid var(--aqua-dim);border-radius:14px;padding:12px;max-height:30vh;overflow:auto;font-size:14px;}
+  .sessions .row{display:flex;justify-content:space-between;gap:8px;padding:8px 4px;border-bottom:1px solid #123;}
+  .sessions .row:last-child{border-bottom:none;}
+  .badge{display:inline-block;border:1px solid var(--aqua-dim);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--muted);}
+  .cal-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;gap:var(--pad);text-align:center;}
+  .cal-instruction{font-size:clamp(18px,5vw,26px);line-height:1.4;min-height:2.6em;}
+  .meter-shell{height:46px;border:3px solid var(--accent);border-radius:12px;background:#061414;overflow:hidden;position:relative;}
+  .meter-fill{height:100%;width:0%;background:var(--accent);transition:width .06s linear;}
+  .meter-tick{position:absolute;top:-6px;bottom:-6px;width:3px;background:var(--ink);opacity:.55;}
+  .hud{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .hud .theme-em{font-size:24px;} .hud .reps{font-weight:900;font-size:clamp(16px,4.5vw,22px);color:var(--accent);white-space:nowrap;}
+  .prize-shell{flex:1 1 120px;height:22px;border:2px solid var(--accent);border-radius:8px;background:#061414;overflow:hidden;min-width:110px;position:relative;}
+  .prize-fill{height:100%;width:0%;background:var(--accent);transition:width .3s ease;} .prize-icon{font-size:18px;}
+  .stage{flex:1;min-height:220px;border:3px solid var(--aqua-dim);border-radius:16px;
+    background:radial-gradient(120% 90% at 50% 30%,#021414 0%,#000 70%);position:relative;overflow:hidden;display:flex;}
+  canvas{width:100%;height:100%;display:block;}
+  .power-shell{height:40px;border:3px solid var(--accent);border-radius:12px;background:#061414;overflow:hidden;position:relative;}
+  .power-fill{height:100%;width:0%;background:var(--accent);transition:width .05s linear;}
+  .power-need{position:absolute;top:-5px;bottom:-5px;width:3px;background:var(--ink);opacity:.8;}
+  .prompt{text-align:center;font-size:clamp(24px,8vw,46px);font-weight:900;color:var(--ink);min-height:1.2em;}
+  .status{text-align:center;font-size:clamp(16px,4.5vw,22px);font-weight:800;min-height:1.3em;color:var(--accent);}
+  .status.good{color:#36e07a;}
+  .foot{text-align:center;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--aqua-dim);
+    padding:10px var(--pad) calc(10px + env(safe-area-inset-bottom));}
+  .foot .note{display:block;color:var(--muted);text-transform:none;letter-spacing:0;margin-top:4px;}
+  @media (prefers-reduced-motion:reduce){*{transition:none !important;}}
+  .vh{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
+</style>
+</head>
+<body>
+
+<section id="menu" class="screen active" aria-label="Main menu">
+  <div class="brand"><h1>VOCAL<br>STRIKE</h1><div class="tag">Speech practice buddy</div></div>
+  <button id="themeNow" class="theme-now" aria-label="Change theme">
+    <span class="em" id="themeNowEm">⚾</span><span>Theme: <b id="themeNowName">Ballpark</b> &middot; tap to change</span>
+  </button>
+  <div class="how"><b>Practice Buddy</b> says each sound first, then it's your turn — make any sound and it cheers you on.
+    <b>Solo Game</b> lets you fill a meter with a steady sound. The bar is set to <b>your</b> comfortable voice. Breathe whenever you need.</div>
+  <div class="spacer"></div>
+  <button id="startBuddy" class="btn-primary">Practice Buddy</button>
+  <button id="startSolo" class="btn-secondary">Solo Game</button>
+  <div class="link-row">
+    <button id="toThemes" class="btn-small">Themes</button>
+    <button id="toList" class="btn-small">Practice Words</button>
+    <button id="toProgress" class="btn-small">Progress</button>
+  </div>
+</section>
+
+<section id="theme" class="screen" aria-label="Choose a theme">
+  <h2 class="section-title">PICK A THEME</h2>
+  <p class="hint">Choose what you're into. Switch any time to keep it fresh.</p>
+  <div id="themeGrid" class="grid"></div>
+  <button id="themeBack" class="btn-small" style="max-width:200px;margin:0 auto;">Back</button>
+</section>
+
+<section id="list" class="screen" aria-label="Practice words and sounds">
+  <h2 class="section-title">PRACTICE WORDS</h2>
+  <p class="hint">Enter the sounds or words from your speech program — one per line (e.g. "ah", "oo", "baseball").
+    Practice Buddy and Solo prompts use these. Leave blank to use a simple starter set.</p>
+  <textarea id="listText" placeholder="ah&#10;oo&#10;ee&#10;baseball&#10;hello"></textarea>
+  <div class="toggle-line"><span>Show words as prompts in Solo Game</span>
+    <button id="usePrompts" class="btn-small on" style="flex:0 0 auto;max-width:140px;">On</button></div>
+  <div class="btn-row"><button id="listSave" class="btn-small">Save</button><button id="listBack" class="btn-small">Back</button></div>
+</section>
+
+<section id="progress" class="screen" aria-label="Progress">
+  <h2 class="section-title">PROGRESS</h2>
+  <div class="stat-grid">
+    <div class="stat"><div class="num" id="statTotal">0</div><div class="lab">Total reps</div></div>
+    <div class="stat"><div class="num" id="statSessions">0</div><div class="lab">Sessions</div></div>
+    <div class="stat"><div class="num" id="statStreak">0</div><div class="lab">Day streak</div></div>
+  </div>
+  <p class="hint">All data stays on this device. Sessions are sealed with SHA-256, so any later edit is detectable
+    (tamper-evidence — not certified medical proof). Use Export to share a file with a therapist.</p>
+  <p id="integrityStatus" class="badge" aria-live="polite">Integrity: not checked yet</p>
+  <div class="sessions" id="sessionList" aria-label="Recent sessions"></div>
+  <div class="btn-row">
+    <button id="exportCsv" class="btn-small">Export CSV</button>
+    <button id="copySummary" class="btn-small">Copy Summary</button>
+    <button id="verifyBtn" class="btn-small">Verify</button>
+  </div>
+  <div class="btn-row"><button id="clearData" class="btn-small">Clear Data</button><button id="progressBack" class="btn-small">Back</button></div>
+</section>
+
+<section id="calibrate" class="screen" aria-label="Voice setup">
+  <h2 class="section-title">VOICE SETUP</h2>
+  <div class="cal-wrap">
+    <p id="calText" class="cal-instruction" aria-live="assertive">Getting your microphone ready…</p>
+    <div class="meter-shell" aria-hidden="true"><div id="calMeter" class="meter-fill"></div><div id="calTick" class="meter-tick" style="left:35%"></div></div>
+  </div>
+  <button id="calCancel" class="btn-small" style="max-width:200px;margin:0 auto;">Cancel</button>
+</section>
+
+<section id="play" class="screen" aria-label="Game">
+  <div class="hud">
+    <span class="theme-em" id="hudEm">⚾</span>
+    <span class="reps" id="hudReps">0</span>
+    <div class="prize-shell" aria-hidden="true"><div id="prizeFill" class="prize-fill"></div></div>
+    <span class="prize-icon" id="prizeIcon">🏆</span>
+  </div>
+  <div class="stage"><canvas id="canvas"></canvas></div>
+  <div class="power-shell" aria-hidden="true"><div id="powerFill" class="power-fill"></div><div id="powerNeed" class="power-need" style="left:100%"></div></div>
+  <p id="prompt" class="prompt" aria-live="assertive"></p>
+  <p id="status" class="status" aria-live="polite" role="status">Make a sound to charge!</p>
+  <div class="btn-row"><button id="menuBtn" class="btn-small">Menu</button><button id="voiceBtn" class="btn-small on">Voice On</button></div>
+  <div id="soloRow" class="btn-row"><button id="easierBtn" class="btn-small">Easier</button><button id="harderBtn" class="btn-small">Harder</button></div>
+  <div id="buddyRow" class="btn-row" style="display:none">
+    <button id="againBtn" class="btn-small">Again</button>
+    <button id="isaidBtn" class="btn-small">I Said It</button>
+    <button id="skipBtn" class="btn-small">Skip</button>
+  </div>
+</section>
+
+<div class="foot">FOS MASTER LLC &middot; 10% of revenue to pediatric cancer research
+  <span class="note">A practice and encouragement tool — not medical treatment. It supports, and never replaces, your speech therapist. Keep it comfortable.</span></div>
+<p id="srLog" class="vh" aria-live="polite"></p>
+
+<script>
+"use strict";
+(function(){
+  const APP_VERSION='1.2.0';
+  const GENESIS='0'.repeat(64);
+  const DEFAULT_WORDS=['ah','oo','ee','mm','ba','ma','pa','up','go','more','hi','yes','me','you','water','hello','thank you','okay'];
+
+  const mem={};
+  const store={ get(k){try{return localStorage.getItem(k);}catch(e){return (k in mem)?mem[k]:null;}},
+    set(k,v){try{localStorage.setItem(k,v);}catch(e){mem[k]=String(v);}} };
+  const $=(id)=>document.getElementById(id);
+
+  /* ---------- THEMES ---------- */
+  const THEMES={
+    ballpark:{name:'Ballpark',emoji:'⚾',accent:'#FFD54A',prizeIcon:'🏆',
+      finale:{icon:'🏆',text:'GRAND SLAM!',say:'Grand slam! The whole crowd is on their feet!',fx:'fireworks',color:'#FFD54A',sound:'fireworks'},
+      rewards:[
+        {icon:'⚾',text:'HOME RUN!',say:'Home run! Going, going, gone!',fx:'arc',color:'#FFD54A',sound:'cheer'},
+        {icon:'💥',text:'CRUSHED IT!',say:'You crushed it!',fx:'pop',color:'#FF8A3D',sound:'cheer'},
+        {icon:'🧢',text:'BASE HIT!',say:'Base hit! Nice swing.',fx:'spin',color:'#5AC8FF',sound:'chime'},
+        {icon:'🎉',text:'THE CROWD ROARS!',say:'Listen to that crowd!',fx:'burst',color:'#FFE14D',sound:'cheer'},
+        {icon:'⭐',text:'ALL-STAR!',say:'All-star play!',fx:'float',color:'#FFD54A',sound:'chime'},
+        {icon:'🔥',text:'ON FIRE!',say:"You're on fire!",fx:'pop',color:'#FF5C5C',sound:'cheer'},
+        {icon:'🥜',text:'PEANUTS & CRACKERJACK!',say:'Peanuts and crackerjack!',fx:'float',color:'#FF8A3D',sound:'chime'}]},
+    fair:{name:'County Fair',emoji:'🎡',accent:'#FF4FA3',prizeIcon:'🧸',
+      finale:{icon:'🧸',text:'YOU WON THE BIG PRIZE!',say:'You won the giant teddy bear!',fx:'fireworks',color:'#FF4FA3',sound:'fireworks'},
+      rewards:[
+        {icon:'🔔',text:'RING THE BELL!',say:'Ding ding ding! You rang the bell!',fx:'rise',color:'#FFE14D',sound:'bell'},
+        {icon:'🎈',text:'BALLOON POP!',say:'Pop! Nice shot.',fx:'pop',color:'#FF4FA3',sound:'pop'},
+        {icon:'🐟',text:'WIN A GOLDFISH!',say:'You won a goldfish!',fx:'float',color:'#FF8A3D',sound:'chime'},
+        {icon:'🎯',text:'BULLSEYE!',say:'Bullseye!',fx:'spin',color:'#FF5C5C',sound:'pop'},
+        {icon:'🎠',text:'ALL ABOARD!',say:'Round and round you go!',fx:'spin',color:'#5AC8FF',sound:'chime'},
+        {icon:'🍭',text:'COTTON CANDY!',say:'Sweet! Cotton candy.',fx:'float',color:'#FF9ECF',sound:'chime'},
+        {icon:'🎟️',text:'BONUS TICKET!',say:'Bonus ticket earned!',fx:'burst',color:'#FFE14D',sound:'chime'}]},
+    space:{name:'Space',emoji:'🚀',accent:'#5AC8FF',prizeIcon:'🌌',
+      finale:{icon:'🌌',text:'GALAXY UNLOCKED!',say:'You reached a whole new galaxy!',fx:'fireworks',color:'#B388FF',sound:'fireworks'},
+      rewards:[
+        {icon:'🚀',text:'LIFTOFF!',say:'Liftoff! Punch it!',fx:'arc',color:'#5AC8FF',sound:'whoosh'},
+        {icon:'⭐',text:'STAR CAUGHT!',say:'You caught a star!',fx:'float',color:'#FFE14D',sound:'chime'},
+        {icon:'🪐',text:'NEW PLANET!',say:'A new planet appears!',fx:'spin',color:'#B388FF',sound:'whoosh'},
+        {icon:'🌠',text:'SHOOTING STAR!',say:'Make a wish — shooting star!',fx:'arc',color:'#5AC8FF',sound:'whoosh'},
+        {icon:'👽',text:'FRIENDLY ALIEN!',say:'You met a friendly alien!',fx:'pop',color:'#36E07A',sound:'chime'},
+        {icon:'☄️',text:'COMET BLAST!',say:'Comet blast!',fx:'burst',color:'#FF8A3D',sound:'whoosh'},
+        {icon:'🛸',text:'WARP SPEED!',say:'Warp speed engaged!',fx:'pop',color:'#5AC8FF',sound:'whoosh'}]},
+    critters:{name:'Critters',emoji:'🐾',accent:'#36E07A',prizeIcon:'🏅',
+      finale:{icon:'🏅',text:'BEST FRIEND!',say:'All the animals love you!',fx:'fireworks',color:'#36E07A',sound:'fireworks'},
+      rewards:[
+        {icon:'🐕',text:'GOOD FETCH!',say:'Good throw! The dog fetched it!',fx:'arc',color:'#FFD54A',sound:'chime'},
+        {icon:'🐱',text:'HAPPY CAT!',say:'The cat is happy!',fx:'pop',color:'#FF9ECF',sound:'chime'},
+        {icon:'🦋',text:'BUTTERFLY!',say:'A butterfly flutters by!',fx:'float',color:'#5AC8FF',sound:'chime'},
+        {icon:'🐠',text:'SPLASH!',say:'Splash! A little fish!',fx:'pop',color:'#5AC8FF',sound:'pop'},
+        {icon:'🐸',text:'RIBBIT!',say:'Ribbit! Nice hop!',fx:'spin',color:'#36E07A',sound:'pop'},
+        {icon:'🐰',text:'HOP HOP!',say:'Hop hop! Bunny is pleased!',fx:'float',color:'#FF9ECF',sound:'chime'},
+        {icon:'🦜',text:'PRETTY BIRD!',say:'Pretty bird says hello!',fx:'spin',color:'#FFE14D',sound:'chime'}]},
+    garden:{name:'Calm Garden',emoji:'🌻',accent:'#9BE36B',prizeIcon:'🌈',
+      finale:{icon:'🌈',text:'THE GARDEN BLOOMS!',say:'The whole garden is in bloom.',fx:'fireworks',color:'#9BE36B',sound:'chime'},
+      rewards:[
+        {icon:'🌻',text:'A FLOWER BLOOMS',say:'A flower blooms.',fx:'pop',color:'#FFE14D',sound:'chime'},
+        {icon:'🌳',text:'THE TREE GROWS',say:'The tree grows a little taller.',fx:'rise',color:'#9BE36B',sound:'chime'},
+        {icon:'🦋',text:'A BUTTERFLY',say:'A gentle butterfly.',fx:'float',color:'#B388FF',sound:'chime'},
+        {icon:'🐦',text:'A SONGBIRD',say:'A songbird sings.',fx:'float',color:'#5AC8FF',sound:'chime'},
+        {icon:'🌅',text:'WARM SUNRISE',say:'The sun rises, warm and easy.',fx:'rise',color:'#FF8A3D',sound:'bell'},
+        {icon:'🍃',text:'A SOFT BREEZE',say:'A soft breeze drifts by.',fx:'float',color:'#9BE36B',sound:'chime'},
+        {icon:'🌼',text:'DAISY OPENS',say:'A daisy opens up.',fx:'pop',color:'#FFE14D',sound:'chime'}]},
+    arcade:{name:'Retro Arcade',emoji:'🕹️',accent:'#00FFFF',prizeIcon:'🏆',
+      finale:{icon:'🏆',text:'HIGH SCORE!',say:'New high score! Incredible!',fx:'fireworks',color:'#00FFFF',sound:'fireworks'},
+      rewards:[
+        {icon:'⚡',text:'POWER UP!',say:'Power up!',fx:'pop',color:'#FFE14D',sound:'chime'},
+        {icon:'⭐',text:'+100',say:'Plus one hundred!',fx:'float',color:'#00FFFF',sound:'chime'},
+        {icon:'🪙',text:'COIN!',say:'Coin collected!',fx:'spin',color:'#FFD54A',sound:'chime'},
+        {icon:'💎',text:'GEM!',say:'A gem!',fx:'spin',color:'#5AC8FF',sound:'chime'},
+        {icon:'👾',text:'TARGET DOWN!',say:'Target down!',fx:'burst',color:'#FF4FA3',sound:'pop'},
+        {icon:'🔥',text:'COMBO!',say:'Combo!',fx:'pop',color:'#FF8A3D',sound:'chime'},
+        {icon:'🚩',text:'CHECKPOINT!',say:'Checkpoint reached!',fx:'rise',color:'#00FFFF',sound:'chime'}]}
+  };
+  let themeKey=store.get('vs_theme')||'ballpark'; if(!THEMES[themeKey]) themeKey='ballpark';
+  function theme(){return THEMES[themeKey];}
+  function applyAccent(){document.documentElement.style.setProperty('--accent',theme().accent);}
+
+  /* ---------- feedback (speech has a fallback timer so flows never hang) ---------- */
+  let voiceOn=store.get('vs_voice')!=='0';
+  function announce(t){$('srLog').textContent=t;}
+  function speak(text,onDone){
+    announce(text);
+    let done=false; const fin=()=>{ if(done)return; done=true; if(onDone)onDone(); };
+    if(!voiceOn||!('speechSynthesis' in window)){ fin(); return; }
+    try{ window.speechSynthesis.cancel();
+      const u=new SpeechSynthesisUtterance(text); u.rate=1; u.pitch=1; u.volume=1;
+      u.onend=fin; u.onerror=fin; window.speechSynthesis.speak(u);
+      setTimeout(fin, Math.max(1800, text.length*85));
+    }catch(e){ fin(); }
+  }
+  function haptic(p){try{if(navigator.vibrate)navigator.vibrate(p);}catch(e){}}
+  function tone(freqs,step,type,gain){if(!audio.ctx)return;const t0=audio.ctx.currentTime;
+    freqs.forEach((f,i)=>{const o=audio.ctx.createOscillator(),g=audio.ctx.createGain();o.type=type||'square';o.frequency.value=f;
+      const s=t0+i*step;g.gain.setValueAtTime(.0001,s);g.gain.exponentialRampToValueAtTime(gain||.18,s+.01);
+      g.gain.exponentialRampToValueAtTime(.0001,s+step*1.6);o.connect(g).connect(audio.ctx.destination);o.start(s);o.stop(s+step*1.6+.02);});}
+  function bell(){if(!audio.ctx)return;const t0=audio.ctx.currentTime;
+    [880,1320,1760].forEach((f,i)=>{const o=audio.ctx.createOscillator(),g=audio.ctx.createGain();o.type='sine';o.frequency.value=f;
+      g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(.22/(i+1),t0+.01);g.gain.exponentialRampToValueAtTime(.0001,t0+1.3);
+      o.connect(g).connect(audio.ctx.destination);o.start(t0);o.stop(t0+1.4);});}
+  function noise(dur,kind){if(!audio.ctx)return;const ctx=audio.ctx,sr=ctx.sampleRate,len=Math.floor(sr*dur);
+    const buf=ctx.createBuffer(1,len,sr),d=buf.getChannelData(0);for(let i=0;i<len;i++)d[i]=Math.random()*2-1;
+    const src=ctx.createBufferSource();src.buffer=buf;const f=ctx.createBiquadFilter();f.type='bandpass';
+    f.frequency.value=kind==='pop'?900:1400;f.Q.value=kind==='pop'?6:.6;const g=ctx.createGain();const t0=ctx.currentTime;
+    g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(kind==='pop'?.3:.16,t0+(kind==='pop'?.005:.1));
+    g.gain.exponentialRampToValueAtTime(.0001,t0+dur);src.connect(f).connect(g).connect(ctx.destination);src.start();src.stop(t0+dur+.02);}
+  function whoosh(){if(!audio.ctx)return;const o=audio.ctx.createOscillator(),g=audio.ctx.createGain();const t0=audio.ctx.currentTime;
+    o.type='sawtooth';o.frequency.setValueAtTime(180,t0);o.frequency.exponentialRampToValueAtTime(900,t0+.5);
+    g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(.16,t0+.05);g.gain.exponentialRampToValueAtTime(.0001,t0+.6);
+    o.connect(g).connect(audio.ctx.destination);o.start(t0);o.stop(t0+.65);}
+  function playSound(id){switch(id){
+    case 'cheer':noise(1.0,'cheer');tone([523,659,784],.09,'square',.12);break;
+    case 'bell':bell();break; case 'pop':noise(.16,'pop');break; case 'whoosh':whoosh();break;
+    case 'fireworks':noise(.2,'pop');setTimeout(()=>noise(.2,'pop'),180);setTimeout(()=>{noise(1.0,'cheer');tone([784,988,1175,1568],.1,'square',.14);},340);break;
+    default:tone([659,784,988,1318],.09);} }
+
+  /* ---------- mic ---------- */
+  const audio={ctx:null,analyser:null,data:null,stream:null,smoothed:0,ready:false};
+  async function initAudio(){if(audio.ready)return true;
+    try{audio.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:false}});
+      const Ctx=window.AudioContext||window.webkitAudioContext;audio.ctx=new Ctx();if(audio.ctx.state==='suspended')await audio.ctx.resume();
+      const src=audio.ctx.createMediaStreamSource(audio.stream);audio.analyser=audio.ctx.createAnalyser();audio.analyser.fftSize=1024;
+      audio.data=new Uint8Array(audio.analyser.fftSize);src.connect(audio.analyser);audio.ready=true;return true;}catch(e){return false;}}
+  function readLoudness(){if(!audio.analyser)return 0;audio.analyser.getByteTimeDomainData(audio.data);
+    let s=0;for(let i=0;i<audio.data.length;i++){const v=(audio.data[i]-128)/128;s+=v*v;}
+    const rms=Math.sqrt(s/audio.data.length);audio.smoothed=audio.smoothed*.82+rms*.18;return audio.smoothed;}
+
+  /* ---------- calibration ---------- */
+  const cal={noiseFloor:.01,comfortable:.08};let calState=null;
+  async function beginCalibration(){show('calibrate');$('calText').textContent='Getting your microphone ready…';
+    const ok=await initAudio();
+    if(!ok){$('calText').textContent='I can\u2019t reach the microphone. Please allow microphone access, then press Start again. (The page must be opened over https or on localhost.)';
+      speak('I could not reach the microphone. Please allow access, then start again.');return;}
+    calState={phase:'quiet',until:performance.now()+1600,peak:0};
+    speak('Let\u2019s set up your voice. First, stay quiet for a moment.');
+    if(!running){running=true;requestAnimationFrame(loop);}}
+  function calibrateTick(level,now){$('calMeter').style.width=Math.min(level/.2*100,100)+'%';
+    if(calState.phase==='quiet'){calState.peak=Math.max(calState.peak,level);
+      if(now>=calState.until){cal.noiseFloor=Math.max(calState.peak,.008);calState={phase:'voice',until:now+2600,peak:0};
+        $('calText').textContent='Now make a steady "ahhh" in your normal, comfortable voice.';
+        speak('Good. Now make a steady ahhh in your comfortable voice.');}}
+    else{calState.peak=Math.max(calState.peak,level);
+      if(now>=calState.until){if(calState.peak<cal.noiseFloor*1.6){calState={phase:'voice',until:now+2600,peak:0};
+          $('calText').textContent='I didn\u2019t catch that. Make a steady "ahhh" — any gentle sound works.';
+          speak('I did not catch that. Make any gentle steady sound.');return;}
+        cal.comfortable=Math.max(calState.peak,cal.noiseFloor*2);finishCalibration();}}}
+  function finishCalibration(){calState=null;$('calText').textContent='All set!';
+    speak('All set. Here we go.',()=>startPlay(playMode));setTimeout(()=>{if(state.mode!=='play')startPlay(playMode);},1800);}
+  function powerPct(level){const span=Math.max(cal.comfortable-cal.noiseFloor,.001);
+    return Math.max(0,Math.min((level-cal.noiseFloor)/span*100,160));}
+
+  /* ---------- difficulty ---------- */
+  const DIFF={easy:{thresh:22,hold:1.1,label:'Easy'},standard:{thresh:36,hold:1.6,label:'Standard'}};
+  let diffKey=store.get('vs_diff')||'easy';function diff(){return DIFF[diffKey]||DIFF.easy;}
+
+  /* ---------- practice list ---------- */
+  let promptList=[];let usePrompts=store.get('vs_useprompts')!=='0';
+  function loadList(){const raw=store.get('vs_list')||'';promptList=raw.split(/[\n,]/).map(s=>s.trim()).filter(Boolean);}
+  loadList();let promptBag=[],lastPrompt=null;
+  function nextPrompt(){if(!usePrompts||promptList.length===0)return null;
+    if(promptBag.length===0){promptBag=shuffle(promptList.map((_,i)=>i));}
+    const i=promptBag.pop();lastPrompt=promptList[i];return promptList[i];}
+
+  /* ---------- sessions + SHA-256 chain (on device only) ---------- */
+  function secureOK(){return !!(window.crypto && window.crypto.subtle);}
+  async function sha256Hex(str){const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');}
+  function payloadOf(s){return [s.t,s.mode,s.theme,s.diff,s.reps,s.dur,s.avg,(s.prompts||[]).join(';')].join('|');}
+  function loadSessions(){try{return JSON.parse(store.get('vs_sessions')||'[]');}catch(e){return [];}}
+  function nextSeq(){const n=parseInt(store.get('vs_seq')||'0',10)+1;store.set('vs_seq',n);return n;}
+  function pushSession(s){s.seq=nextSeq();s.prev=null;s.hash=null;const a=loadSessions();a.push(s);
+    while(a.length>300)a.shift();store.set('vs_sessions',JSON.stringify(a));sealSessions();}
+  async function sealSessions(){if(!secureOK())return false;const a=loadSessions();let changed=false;
+    for(let i=0;i<a.length;i++){if(a[i].hash)continue;const prev=i===0?GENESIS:(a[i-1].hash||GENESIS);
+      a[i].prev=prev;a[i].hash=await sha256Hex(prev+'|'+a[i].seq+'|'+payloadOf(a[i]));changed=true;}
+    if(changed)store.set('vs_sessions',JSON.stringify(a));return true;}
+  async function verifyChain(){if(!secureOK())return {reason:'needs-secure'};await sealSessions();const a=loadSessions();
+    for(let i=0;i<a.length;i++){const expPrev=i===0?GENESIS:(a[i-1].hash||GENESIS);
+      if(a[i].prev!==expPrev)return {ok:false,brokenAt:a[i].seq};
+      const h=await sha256Hex(a[i].prev+'|'+a[i].seq+'|'+payloadOf(a[i]));if(h!==a[i].hash)return {ok:false,brokenAt:a[i].seq};}
+    return {ok:true,count:a.length};}
+  let session=null;
+  function startSession(mode){session={start:Date.now(),mode,reps:0,clearMs:0,prompts:{}};}
+  function endSession(){if(!session||session.reps<1){session=null;return;}
+    const dur=Math.round((Date.now()-session.start)/1000);
+    pushSession({t:new Date().toISOString(),mode:session.mode,theme:theme().name,diff:diff().label,reps:session.reps,
+      dur,avg:+(session.clearMs/session.reps/1000).toFixed(1),prompts:Object.keys(session.prompts)});
+    session=null;}
+
+  /* ---------- shared award ---------- */
+  const state={mode:'menu',total:parseInt(store.get('vs_total')||'0',10),prize:0,charge:0,lastTime:0,
+    encouraged:false,sinceProgress:0,spawnAt:0,currentPrompt:null,lastPct:0};
+  const PRIZE_GOAL=8;
+  let playMode='buddy';
+  function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+  let rewardBag=[],lastReward=-1;
+  function nextReward(){const t=theme();
+    if(rewardBag.length===0){rewardBag=shuffle(t.rewards.map((_,i)=>i));
+      if(rewardBag[rewardBag.length-1]===lastReward&&rewardBag.length>1){const x=rewardBag.pop();rewardBag.unshift(x);}}
+    const i=rewardBag.pop();lastReward=i;return t.rewards[i];}
+  function award(prompt){
+    state.total++;store.set('vs_total',state.total);
+    if(session){session.reps++;if(prompt)session.prompts[prompt]=1;}
+    $('hudReps').textContent=session?session.reps:state.total;
+    haptic([40,30,40]);state.prize++;
+    let finale=false,def;
+    if(state.prize>=PRIZE_GOAL){state.prize=0;def=theme().finale;finale=true;haptic([60,40,60,40,90]);}
+    else def=nextReward();
+    $('prizeFill').style.width=Math.min(state.prize/PRIZE_GOAL*100,100)+'%';
+    startReward(def,finale);
+    return {def,finale};
+  }
+
+  /* ---------- canvas ---------- */
+  const cv=$('canvas'),ctx=cv.getContext('2d');let W=0,H=0,DPR=1;
+  function resize(){DPR=Math.min(window.devicePixelRatio||1,2);const r=cv.getBoundingClientRect();
+    W=Math.max(r.width,1);H=Math.max(r.height,1);cv.width=Math.floor(W*DPR);cv.height=Math.floor(H*DPR);ctx.setTransform(DPR,0,0,DPR,0,0);}
+  window.addEventListener('resize',resize);
+  const particles=[];
+  function burst(x,y,color){for(let i=0;i<26;i++){const a=Math.random()*Math.PI*2,s=1.5+Math.random()*3.5;
+    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,sz:4+Math.random()*5,c:color||theme().accent});}}
+  let reward=null;
+  function startReward(def,finale){reward={start:performance.now(),dur:finale?2400:1500,def,finale:!!finale};burst(W*.5,H*.42,def.color);playSound(def.sound);}
+  function drawHero(x,y,glow){const u=Math.max(Math.min(W,H)/22,5);ctx.save();ctx.shadowColor=theme().accent;ctx.shadowBlur=8+glow*22;
+    ctx.fillStyle=theme().accent;ctx.fillRect(x-u,y-u*2,u*2,u*3);ctx.fillRect(x-u*.7,y-u*3.4,u*1.4,u*1.4);
+    ctx.fillRect(x+u,y-u*2-glow*u*1.5,u*.8,u*1.6);ctx.restore();}
+  function drawTarget(x,y,shake,scale){const u=Math.max(Math.min(W,H)/16,6)*scale;ctx.save();
+    ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);ctx.shadowColor=theme().accent;ctx.shadowBlur=12;
+    ctx.fillStyle='#001a1a';ctx.strokeStyle=theme().accent;ctx.lineWidth=4;ctx.fillRect(x-u,y-u,u*2,u*2);ctx.strokeRect(x-u,y-u,u*2,u*2);
+    ctx.fillStyle=theme().accent;ctx.fillRect(x-u*.5,y-u*.4,u*.35,u*.35);ctx.fillRect(x+u*.18,y-u*.4,u*.35,u*.35);
+    ctx.fillRect(x-u*.45,y+u*.35,u*.95,u*.18);ctx.restore();}
+  function emoji(ch,x,y,size,alpha,rot,scale){ctx.save();ctx.globalAlpha=alpha==null?1:alpha;ctx.translate(x,y);
+    if(rot)ctx.rotate(rot);if(scale)ctx.scale(scale,scale);ctx.font=size+'px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(ch,0,0);ctx.restore();}
+  function drawReward(){const e=Math.min((performance.now()-reward.start)/reward.dur,1);const def=reward.def;
+    const cx=W*.5,cy=H*.45,base=Math.min(W,H)*(reward.finale?.5:.36),easeOut=1-Math.pow(1-e,3);
+    if(reward.finale&&e<.95&&Math.random()<.12)burst(W*(.2+Math.random()*.6),H*(.2+Math.random()*.4),def.color);
+    switch(def.fx){
+      case 'arc':{const x=W*.2+easeOut*W*.7,y=H*.72-Math.sin(e*Math.PI)*H*.55;emoji(def.icon,x,y,base*.7,1,e*2,1);break;}
+      case 'rise':{const y=H*.85-easeOut*H*.6;emoji(def.icon,cx,y,base*.7,1,0,1);ctx.globalAlpha=.3;ctx.fillStyle=def.color;ctx.fillRect(cx-3,y,6,H);ctx.globalAlpha=1;break;}
+      case 'float':{const y=cy-e*H*.25;emoji(def.icon,cx+Math.sin(e*6)*20,y,base*.7,1-e*.4,0,1);break;}
+      case 'spin':{const sc=.4+easeOut*.8;emoji(def.icon,cx,cy,base*.7,1,e*8,sc);break;}
+      case 'fireworks':{const sc=.4+easeOut*.9;emoji(def.icon,cx,cy,base*.8,1,Math.sin(e*6)*.2,sc);break;}
+      default:{const sc=e<.5?(e/.5)*1.2:1.2-(e-.5)*.4;emoji(def.icon,cx,cy,base*.7,1,0,Math.max(sc,.1));}}}
+  function drawBuddyScene(){const hx=W*.5,hy=H*.54,t=performance.now()/600;let ring=null,base=Math.min(W,H)*.18;
+    if(buddy.state==='speaking'){ring=theme().accent;}
+    else if(buddy.state==='listen'){ring='#36e07a';base+=(state.lastPct||0)/100*Math.min(W,H)*.12;}
+    if(ring){ctx.save();ctx.globalAlpha=.45+.3*Math.sin(t*3);ctx.strokeStyle=ring;ctx.lineWidth=4;ctx.shadowColor=ring;ctx.shadowBlur=18;
+      ctx.beginPath();ctx.arc(hx,hy,base,0,Math.PI*2);ctx.stroke();ctx.restore();}
+    drawHero(hx,hy+base*.5,buddy.state==='listen'?.6:.3);
+    if(buddy.state==='listen')emoji('🎤',hx,hy-base*1.15,Math.min(W,H)*.12,1,0,1);}
+  function render(progress){ctx.clearRect(0,0,W,H);
+    if(reward){drawReward();if(reward.def&&reward.def.text){ctx.save();ctx.fillStyle='#fff';ctx.globalAlpha=.95;
+        ctx.font='800 '+Math.max(Math.min(W,H)*.06,16)+'px system-ui,sans-serif';ctx.textAlign='center';ctx.fillText(reward.def.text,W*.5,H*.86);ctx.restore();}}
+    else if(playMode==='buddy'){drawBuddyScene();}
+    else{const heroX=W*.22,baseY=H*.72,tgtX=W*.74,tgtY=H*.5;
+      if(progress>.02){ctx.save();ctx.globalAlpha=.35+progress*.5;ctx.strokeStyle=theme().accent;ctx.lineWidth=2+progress*8;
+        ctx.shadowColor=theme().accent;ctx.shadowBlur=16;ctx.beginPath();ctx.moveTo(heroX+20,baseY-30);ctx.lineTo(tgtX,tgtY);ctx.stroke();ctx.restore();}
+      drawHero(heroX,baseY,progress);if(target.alive)drawTarget(tgtX,tgtY,progress*6,target.scale);}
+    for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.vy+=.12;p.life-=.03;
+      if(p.life<=0){particles.splice(i,1);continue;}ctx.globalAlpha=Math.max(p.life,0);ctx.fillStyle=p.c;ctx.fillRect(p.x,p.y,p.sz,p.sz);}
+    ctx.globalAlpha=1;}
+
+  /* ---------- SOLO game ---------- */
+  const target={alive:false,scale:1};
+  function setStatus(t,good){$('status').textContent=t;$('status').classList.toggle('good',!!good);}
+  function setPrompt(t){$('prompt').textContent=t||'';}
+  function spawnTarget(){target.alive=true;target.scale=1;state.charge=0;state.encouraged=false;state.sinceProgress=0;
+    state.spawnAt=performance.now();reward=null;$('powerNeed').style.left='100%';state.currentPrompt=nextPrompt();
+    if(state.currentPrompt){setPrompt(state.currentPrompt);setStatus('Say it and hold the sound');speak('Say: '+state.currentPrompt+'. Then make the sound.');}
+    else{setPrompt('');setStatus('Make a sound to charge!');speak('Make your sound!');}}
+  function clearTarget(){target.alive=false;const clearMs=performance.now()-state.spawnAt;if(session)session.clearMs+=clearMs;
+    const r=award(state.currentPrompt);setStatus(r.def.text,true);
+    speak(r.def.say,()=>{if(state.mode==='play'&&playMode==='solo'&&!target.alive)spawnTarget();});
+    setTimeout(()=>{if(state.mode==='play'&&playMode==='solo'&&!target.alive&&!reward)spawnTarget();},r.finale?2700:1700);}
+
+  /* ---------- PRACTICE BUDDY ---------- */
+  const BUDDY_THRESH=18, BUDDY_EFFORT=0.3, BUDDY_WINDOW=9000;
+  const buddy={state:'idle',word:'',attempt:0,listenStart:0,effortTime:0,words:[],bag:[]};
+  const PRAISE=['Beautiful.','You got it.','Nice work.','That sounded great.','Well done.','Yes!','Perfect.'];
+  function buddyActive(){return state.mode==='play'&&playMode==='buddy';}
+  function buddyStart(){buddy.words=(promptList.length?promptList.slice():DEFAULT_WORDS.slice());buddy.bag=[];
+    setPrompt('');setStatus('Get ready…');speak('Let\u2019s practice together. I\u2019ll say it first, then it\u2019s your turn.',()=>buddyNextWord());}
+  function buddyNextWord(){if(!buddyActive())return;reward=null;
+    if(buddy.bag.length===0)buddy.bag=shuffle(buddy.words.map((_,i)=>i));
+    const i=buddy.bag.pop();buddy.word=buddy.words[i];buddy.attempt=0;setPrompt(buddy.word);buddyModel(true);}
+  function buddyModel(first){if(!buddyActive()||!buddy.word)return;buddy.state='speaking';setStatus('My turn — listen');
+    const modelLine=first?('Let\u2019s say it together. '+buddy.word+'. '+buddy.word):(buddy.word+'. Listen again. '+buddy.word);
+    const turnLine='Now your turn. Say '+buddy.word;
+    speak(modelLine,()=>{if(!buddyActive())return;speak(turnLine,()=>buddyListen());});}
+  function buddyListen(){if(!buddyActive())return;buddy.state='listen';buddy.listenStart=performance.now();buddy.effortTime=0;
+    $('powerFill').style.width='0%';setStatus('Your turn — say it!');}
+  function buddySuccess(src){if(!buddyActive()||buddy.state==='reward')return;
+    if(src==='voice'&&session){const resp=performance.now()-buddy.listenStart;if(resp>0)session.clearMs+=resp;}
+    buddy.state='reward';const word=buddy.word;award(word);
+    const praise=PRAISE[Math.floor(Math.random()*PRAISE.length)];setStatus(word+'! '+praise,true);
+    speak(word+'! '+praise,()=>buddyNextWord());}
+  function buddyTimeout(){if(!buddyActive())return;buddy.attempt++;buddy.state='speaking';
+    if(buddy.attempt<2){setStatus("That's okay — let's listen again");speak("That's okay. Let's listen again.",()=>buddyModel(false));}
+    else{setStatus('Good effort — next one');speak("Good effort. Let's try another.",()=>buddyNextWord());}}
+
+  /* ---------- loop ---------- */
+  let running=false;
+  function loop(now){if(!running)return;const level=audio.ready?readLoudness():0;
+    const dt=state.lastTime?Math.min((now-state.lastTime)/1000,.1):0;state.lastTime=now;
+    if(state.mode==='calibrate'&&calState){calibrateTick(level,now);}
+    else if(state.mode==='play'){
+      if(playMode==='solo'){
+        const pct=powerPct(level),need=diff().hold,above=pct>=diff().thresh;
+        if(reward){render(0);if((now-reward.start)/reward.dur>=1)reward=null;}
+        else if(target.alive){if(above){state.charge+=dt;state.sinceProgress=0;}else{state.charge=Math.max(0,state.charge-dt*.4);state.sinceProgress+=dt;}
+          const prog=Math.min(state.charge/need,1);$('powerFill').style.width=Math.min(pct,100)+'%';target.scale=1-prog*.18;render(prog);
+          if(prog>=1)clearTarget();else if(state.sinceProgress>6&&!state.encouraged){state.encouraged=true;speak('A little sound will do it. You\u2019ve got this.');}}
+        else{$('powerFill').style.width=Math.min(pct,100)+'%';render(0);}
+      } else { // buddy
+        const pct=powerPct(level);state.lastPct=pct;
+        if(reward){render(0);if((now-reward.start)/reward.dur>=1)reward=null;}
+        else{
+          if(buddy.state==='listen'){$('powerFill').style.width=Math.min(pct,100)+'%';
+            if(pct>=BUDDY_THRESH)buddy.effortTime+=dt;else buddy.effortTime=Math.max(0,buddy.effortTime-dt*.5);
+            if(buddy.effortTime>=BUDDY_EFFORT)buddySuccess('voice');
+            else if(now-buddy.listenStart>BUDDY_WINDOW)buddyTimeout();}
+          render(0);
+        }
+      }
+    }
+    requestAnimationFrame(loop);}
+
+  /* ---------- start / stop ---------- */
+  function startPlay(mode){state.mode='play';playMode=mode;show('play');applyAccent();resize();
+    $('hudEm').textContent=theme().emoji;$('prizeIcon').textContent=theme().prizeIcon;
+    state.prize=0;$('prizeFill').style.width='0%';$('hudReps').textContent='0';state.lastTime=0;rewardBag=[];promptBag=[];reward=null;
+    $('soloRow').style.display=mode==='solo'?'flex':'none';$('buddyRow').style.display=mode==='buddy'?'flex':'none';
+    startSession(mode);if(!running){running=true;requestAnimationFrame(loop);}
+    if(mode==='solo')spawnTarget();else buddyStart();}
+  function goMenu(){endSession();state.mode='menu';buddy.state='idle';
+    if('speechSynthesis' in window)try{window.speechSynthesis.cancel();}catch(e){}refreshMenu();show('menu');}
+
+  /* ---------- screens ---------- */
+  const SCREENS=['menu','theme','list','progress','calibrate','play'];
+  function show(name){SCREENS.forEach(id=>$(id).classList.toggle('active',id===name));}
+  function refreshMenu(){applyAccent();$('themeNowEm').textContent=theme().emoji;$('themeNowName').textContent=theme().name;}
+  function buildThemeGrid(){const g=$('themeGrid');g.innerHTML='';
+    Object.keys(THEMES).forEach(key=>{const t=THEMES[key];const b=document.createElement('button');
+      b.className='theme-card';b.style.borderColor=t.accent;if(key===themeKey){b.style.background=t.accent;b.style.color='#000';}
+      b.innerHTML='<span class="em">'+t.emoji+'</span><span class="nm">'+t.name+'</span>';b.setAttribute('aria-label','Theme: '+t.name);
+      b.addEventListener('click',()=>{themeKey=key;store.set('vs_theme',key);applyAccent();buildThemeGrid();speak(t.name+' theme selected.');});g.appendChild(b);});}
+  function dayStreak(s){if(!s.length)return 0;const days=new Set(s.map(x=>new Date(x.t).toDateString()));
+    let streak=0,d=new Date();for(;;){if(days.has(d.toDateString())){streak++;d.setDate(d.getDate()-1);}else break;}
+    if(streak===0){const y=new Date();y.setDate(y.getDate()-1);let dd=y;while(days.has(dd.toDateString())){streak++;dd.setDate(dd.getDate()-1);}}return streak;}
+  function renderProgress(){const s=loadSessions();$('statTotal').textContent=state.total;$('statSessions').textContent=s.length;
+    $('statStreak').textContent=dayStreak(s);const list=$('sessionList');list.innerHTML='';
+    if(s.length===0){list.innerHTML='<p class="hint" style="padding:8px;">No sessions yet. Play a round and your progress shows up here.</p>';return;}
+    s.slice(-20).reverse().forEach(x=>{const d=new Date(x.t);const when=d.toLocaleDateString()+' '+d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+      const row=document.createElement('div');row.className='row';
+      row.innerHTML='<span>#'+(x.seq||'?')+' &middot; '+when+' &middot; '+(x.mode||'')+'</span><span>'+x.reps+' reps &middot; '+x.dur+'s</span>';list.appendChild(row);});}
+  function toCSV(){const s=loadSessions();
+    const head=['seq','date','time','mode','theme','difficulty','reps','duration_sec','avg_sec_per_rep','words_practiced','prev_hash','hash'];
+    const rows=s.map(x=>{const d=new Date(x.t);return [x.seq||'',d.toLocaleDateString(),d.toLocaleTimeString(),x.mode||'',x.theme,x.diff,x.reps,x.dur,x.avg,
+      '"'+(x.prompts||[]).join('; ')+'"',x.prev||'',x.hash||''].join(',');});
+    return head.join(',')+'\n'+rows.join('\n');}
+  function download(name,text,mime){try{const blob=new Blob([text],{type:mime||'text/csv'});const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);return true;}catch(e){return false;}}
+  const INTEGRITY_NOTE='INTEGRITY: Sessions are chained with SHA-256, so any later edit to this log is detectable on this device. '+
+    'This shows the record has not been altered since capture. It does NOT certify the time (device clock), the user\u2019s identity, '+
+    'or clinical accuracy. It is self-reported practice data, not certified medical evidence.';
+  function summaryText(){const s=loadSessions();const totalReps=s.reduce((a,x)=>a+x.reps,0);const totalMin=Math.round(s.reduce((a,x)=>a+x.dur,0)/60);
+    let out='Vocal Strike v'+APP_VERSION+' — progress summary\n';
+    out+='Sessions: '+s.length+'  |  Total reps: '+totalReps+'  |  Total time: ~'+totalMin+' min\n';
+    if(s.length)out+='Latest seal (SHA-256): '+(s[s.length-1].hash||'(unsealed)')+'\n';out+='\n';
+    s.slice(-15).reverse().forEach(x=>{const d=new Date(x.t);
+      out+='#'+(x.seq||'?')+'  '+d.toLocaleDateString()+' '+d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+
+        ' — '+(x.mode||'')+', '+x.theme+', '+x.reps+' reps, '+x.dur+'s'+((x.prompts&&x.prompts.length)?(', words: '+x.prompts.join(', ')):'')+'\n';});
+    out+='\n'+INTEGRITY_NOTE+'\n';return out;}
+
+  /* ---------- controls ---------- */
+  $('startBuddy').addEventListener('click',()=>{playMode='buddy';beginCalibration();});
+  $('startSolo').addEventListener('click',()=>{playMode='solo';beginCalibration();});
+  $('calCancel').addEventListener('click',goMenu);
+  $('menuBtn').addEventListener('click',goMenu);
+  $('toThemes').addEventListener('click',()=>{buildThemeGrid();show('theme');});
+  $('themeBack').addEventListener('click',()=>{refreshMenu();show('menu');});
+  $('themeNow').addEventListener('click',()=>{buildThemeGrid();show('theme');});
+  $('toList').addEventListener('click',()=>{$('listText').value=store.get('vs_list')||'';$('usePrompts').textContent=usePrompts?'On':'Off';$('usePrompts').classList.toggle('on',usePrompts);show('list');});
+  $('usePrompts').addEventListener('click',()=>{usePrompts=!usePrompts;store.set('vs_useprompts',usePrompts?'1':'0');$('usePrompts').textContent=usePrompts?'On':'Off';$('usePrompts').classList.toggle('on',usePrompts);});
+  $('listSave').addEventListener('click',()=>{store.set('vs_list',$('listText').value);loadList();promptBag=[];speak('Saved your practice words.');refreshMenu();show('menu');});
+  $('listBack').addEventListener('click',()=>{refreshMenu();show('menu');});
+  $('toProgress').addEventListener('click',async()=>{await sealSessions();renderProgress();
+    $('integrityStatus').textContent=secureOK()?'Integrity: tap Verify to check the chain':'Integrity: open the https version to enable sealing';show('progress');});
+  $('progressBack').addEventListener('click',()=>{refreshMenu();show('menu');});
+  $('exportCsv').addEventListener('click',async()=>{await sealSessions();const ok=download('vocal-strike-progress.csv',toCSV(),'text/csv');if(!ok)alert(summaryText());});
+  $('copySummary').addEventListener('click',()=>{const txt=summaryText();
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(()=>speak('Summary copied.'),()=>alert(txt));}else alert(txt);});
+  $('verifyBtn').addEventListener('click',async()=>{const r=await verifyChain();
+    if(r.reason==='needs-secure'){$('integrityStatus').textContent='Integrity: needs the secure (https) version of the app.';speak('Integrity check needs the secure version.');return;}
+    if(r.ok){$('integrityStatus').textContent='Integrity OK — '+r.count+' records, none altered since capture.';speak('Integrity check passed. '+r.count+' records intact.');}
+    else{$('integrityStatus').textContent='Integrity WARNING — record #'+r.brokenAt+' looks changed since capture.';speak('Warning. Record '+r.brokenAt+' looks changed.');}});
+  $('clearData').addEventListener('click',()=>{if(confirm('Erase all saved progress on this device? This cannot be undone.')){
+    store.set('vs_sessions','[]');store.set('vs_total','0');store.set('vs_seq','0');state.total=0;renderProgress();$('integrityStatus').textContent='Integrity: not checked yet';speak('Progress cleared.');}});
+  $('voiceBtn').addEventListener('click',()=>{voiceOn=!voiceOn;store.set('vs_voice',voiceOn?'1':'0');$('voiceBtn').textContent=voiceOn?'Voice On':'Voice Off';$('voiceBtn').classList.toggle('on',voiceOn);
+    if(!voiceOn&&'speechSynthesis' in window)try{window.speechSynthesis.cancel();}catch(e){}});
+  function setDiff(k){diffKey=k;store.set('vs_diff',k);setStatus('Difficulty: '+diff().label);speak(diff().label+' mode.');}
+  $('easierBtn').addEventListener('click',()=>setDiff('easy'));
+  $('harderBtn').addEventListener('click',()=>setDiff('standard'));
+  // buddy controls
+  $('againBtn').addEventListener('click',()=>{if(buddyActive())buddyModel(false);});
+  $('isaidBtn').addEventListener('click',()=>{if(buddyActive())buddySuccess('tap');});
+  $('skipBtn').addEventListener('click',()=>{if(buddyActive()){buddy.state='speaking';setStatus('Next one');speak('Okay, next one.',()=>buddyNextWord());}});
+
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')endSession();});
+  window.addEventListener('pagehide',endSession);
+
+  /* ---------- init ---------- */
+  $('voiceBtn').textContent=voiceOn?'Voice On':'Voice Off';$('voiceBtn').classList.toggle('on',voiceOn);
+  refreshMenu();resize();sealSessions();
+})();
+</script>
+<script>
+  if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});}
+</script>
+</body>
+</html>
